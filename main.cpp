@@ -632,7 +632,7 @@ void OTASetup(){;
   ArduinoOTA.setPassword(OTAPASSWD);
 
   // Port defaults to 3232
-  ArduinoOTA.setPort(3232);
+  ArduinoOTA.setPort(30499);
 
   ArduinoOTA.onStart([]() {
     String type;
