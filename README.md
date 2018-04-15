@@ -19,7 +19,7 @@ A C++ code that controls the different elements of a sliding gate, namely:
 - a web interface,
 - OTA code update.
 
-interface board, ![](doc/images/switchBoard.png)
+interface board: ![](doc/images/switchBoard.png)
 
 
 Screenshots: ![](doc/images/screenshot.png) ![](doc/images/about.png)
