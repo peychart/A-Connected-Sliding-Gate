@@ -1,5 +1,5 @@
-A Connected Sliding Gate
-========================
+Sliding Gate
+============
 
 An ESP-WROOM-32 and arduino code to control a sliding gate with AC motor.
 
@@ -16,9 +16,13 @@ A C++ code that controls the different elements of a sliding gate, namely:
 - 1 RF remote control input,
 - automatic closing after a programmable delay,
 - control of the opening and closing times,
+- a web interface,
 - OTA code update.
 
-An onboard WiFi interface will allow the realization of a small WEB interface (coming soon) for the adjustment of some parameters and the recovery of other states within the home automation system ...
+interface board, ![](doc/images/switchBoard.png)
+
+
+Screenshots: ![](doc/images/screenshot.png) ![](doc/images/about.png)
 
 Hardware:
 ---------
@@ -47,7 +51,6 @@ Problem: the PIC microcontroller support 5v on its I/O while the ESP only suppor
 TODO:
 -----
 
-- the web interface,
 - periodic wake up for the states recovery,
 - use FreeRTOS multitasking...
 - ...
@@ -65,8 +68,10 @@ Replacement part:
 
 
 Functional scheme:
-![](doc/images/schema.png)
 ![](doc/images/boardSchema.png)
+
+
+
 
 
 Interface board:
