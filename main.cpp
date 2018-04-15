@@ -44,8 +44,8 @@ gpio_num_t gpio[]     = {GPIO_NUM_13, GPIO_NUM_12, GPIO_NUM_14, GPIO_NUM_0,  GPI
 #define DEFAULTAUTOCLOSEDELAY     30000
 #define MAXAUTOCLOSEDELAY         120000
 #define EMULATEBLINKING           1500
-#define MAXIMUMCLOSINGTIME        25000
-#define MILLISEC()                (millis()+MAXIMUMCLOSINGTIME)
+#define MAXIMUMOPERATINGTIME      25000
+#define MILLISEC()                (millis()+MAXIMUMOPERATINGTIME)
 #define MAX(n,m)                  ((m>n) ?(m) :(n))
 #define MIN(n,m)                  ((m<n) ?(m) :(n))
 #define resetDeepSleepDelay()     deepSleepDelay=DEEPSLEEPDELAY/LOOPDELAY
@@ -57,7 +57,7 @@ gpio_num_t gpio[]     = {GPIO_NUM_13, GPIO_NUM_12, GPIO_NUM_14, GPIO_NUM_0,  GPI
 #define disableAutoClose()        setAutoClose(-1)
 #define isAutocloseEnabled()      autoclose>=0
 #define shouldAutoclosing()       !autocloseDelay
-#define shouldMeasureTime(d)      ((movingTime[d]<(0.8*MAXIMUMCLOSINGTIME)) || (movingTime[d]>MAXIMUMCLOSINGTIME))
+#define shouldMeasureTime(d)      ((movingTime[d]<(0.8*MAXIMUMOPERATINGTIME)) || (movingTime[d]>MAXIMUMOPERATINGTIME))
 #define unsetMeasureTime(d)       movingTime[d] =(unsigned long)(-1L)
 #define isValidMovingTime(d)      movingTime[d]!=(unsigned long)(-1L)
 #define initMovingTimeMeasure(d)  {startMovingTime[d]=MILLISEC(); if(shouldMeasureTime(d)){unsetMeasureTime(d); if(isClosed() || isOpened()) movingTime[d]=startMovingTime[d];}}
@@ -178,7 +178,7 @@ void securityCheck(){
     }
 
     //maximumMovingTime check:
-    if(!disableMovingTimeControl && (MILLISEC()-startMovingTime[direction])>=((shouldMeasureTime(direction)) ?MAXIMUMCLOSINGTIME :movingTime[direction])){
+    if(!disableMovingTimeControl && (MILLISEC()-startMovingTime[direction])>=((shouldMeasureTime(direction)) ?MAXIMUMOPERATINGTIME :movingTime[direction])){
       stopMotors();
       if(direction==CLOSE){
         direction=OPEN;
@@ -270,7 +270,7 @@ String  getPage(){
   page += "},v*1000);}\n";
   page += "function getStatus(){setTimeout(function(){\n";
   page += "var ret, req=new XMLHttpRequest(); req.open('GET', document.URL+'status', false); req.send(null);\n";
-  page += "ret=req.responseText; ret=parseInt(ret.substr(1,ret.length-2));;\n";
+  page += "ret=req.responseText; ret=parseInt(ret.substr(1,ret.length-2));\n";
   page += "if(ret<0){\n";
   page += "  document.getElementById('blockStatus').className='blockStatus-closed';\n";
   page += "  document.getElementById('close').className='disClose'; document.getElementById('open').className='open';\n";
@@ -284,6 +284,10 @@ String  getPage(){
   page += "  document.getElementById('close').className='close'; document.getElementById('open').className='open';\n";
   page += "  document.getElementById('close').disabled=true;     document.getElementById('open').disabled=true;\n";
   page += "}}, 1500);}\n";
+  page += "function isMovingtimeDisabled(e){\n";
+  page += "var ret, req=new XMLHttpRequest(); req.open('GET', document.URL+'isOperationTimeControlEnabled', false); req.send(null);\n";
+  page += "ret=req.responseText; ret=parseInt(ret.substr(1,ret.length-2));\n";
+  page += "document.getElementById('movingtime').disabled=document.getElementById('resetOperatingTime').disabled=!ret;}\n";
   page += "function showHelp(){refresh(120); document.getElementById('about').style.display='block';}\n";
   page += "function saveSSID(f){\n";
   page += "if((f=f.parentNode)){var s, p=false;\n";
@@ -372,8 +376,8 @@ String  getPage(){
   page += "</div>\n";
   page += "<div class='ligne'>\n";
   page += "<div class='libelle'> Operating time control </div>\n";
-  page += "<div class='value'>:&nbsp; <input " + (String)(!disableMovingTimeControl ?"checked" :"") + " name='movingtime' type='checkbox' onchange='submit()';>\n";
-  page += "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<button id='resetOperatingTime' name='stop' title='Remeasure the operating time' style='height:25px;'>Reset measures</button></div>\n";
+  page += "<div class='value'>:&nbsp; <input " + (String)(!disableMovingTimeControl ?"checked" :"") + " " + ((isValidMovingTime(OPEN)||isValidMovingTime(CLOSE)) ?"" :"disabled") + " id='movingtime' name='movingtime' type='checkbox' onchange='submit();' onmouseover='this.disabled=false;' onmouseout='isMovingtimeDisabled();'>\n";
+  page += "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<button id='resetOperatingTime' name='resetOperatingTime' title='Remeasure the operating time' style='height:25px;' " + (String)((isValidMovingTime(OPEN)||isValidMovingTime(CLOSE)) ?"" :"disabled") + ">Reset measures</button></div>\n";
   page += "</div>\n";
   page += "<div class='ligne'>\n";
   page += "<div class='libelle'> Presence detector function </div>\n";
@@ -710,26 +714,27 @@ void setup(){
 
   #ifdef WEBUI
   //Definition des URL d'entree /Input URL definition
-  server.on("/",                           HTTP_GET,  [](AsyncWebServerRequest *request){handleRoot(request);});
-  server.on("/",                           HTTP_POST, [](AsyncWebServerRequest *request){handleRoot(request);});
-  server.on("/status",                     HTTP_GET,  [](AsyncWebServerRequest *request){request->send(200, "text/plain", (isClosed() ?"[-1]" :(isOpened() ?"[1]" : "[0]")));});
-  server.on("/open",                       HTTP_GET,  [](AsyncWebServerRequest *request){startOpening();  handleRoot(request);});
-  server.on("/close",                      HTTP_GET,  [](AsyncWebServerRequest *request){startClosing();  handleRoot(request);});
-  server.on("/stop",                       HTTP_GET,  [](AsyncWebServerRequest *request){stopMotors();    handleRoot(request);});
-  server.on("/allowAutoClose",             HTTP_GET,  [](AsyncWebServerRequest *request){setAutoClose(DEFAULTAUTOCLOSEDELAY); writeConfig(); handleRoot(request);});
-  server.on("/disableAutoClose",           HTTP_GET,  [](AsyncWebServerRequest *request){disableAutoClose();                  writeConfig(); handleRoot(request);});
-  server.on("/allowDetection",             HTTP_GET,  [](AsyncWebServerRequest *request){disabledDetection=((deepSleepEnabled() && (COMMAND>HIGHPINS || DETECT>HIGHPINS)) ?true :false); writeConfig(); handleRoot(request);});
-  server.on("/disableDetection",           HTTP_GET,  [](AsyncWebServerRequest *request){disabledDetection=true;              writeConfig(); handleRoot(request);});
-  server.on("/enableDeepSleep",            HTTP_GET,  [](AsyncWebServerRequest *request){enableDeepSleep();                   writeConfig(); handleRoot(request);});
-  server.on("/disableDeepSleep",           HTTP_GET,  [](AsyncWebServerRequest *request){disableDeepSleep();                  writeConfig(); handleRoot(request);});
-//server.on("/forward",                    HTTP_GET,  [](AsyncWebServerRequest *request){place=false;                         writeConfig(); handleRoot(request);});
-//server.on("/reverse",                    HTTP_GET,  [](AsyncWebServerRequest *request){place=true;                          writeConfig(); handleRoot(request);});
-  server.on("/enableTorqueeCheck",          HTTP_GET,  [](AsyncWebServerRequest *request){overTorqueCheck=true;                writeConfig(); handleRoot(request);});
-  server.on("/disableoverTorqueCheck",     HTTP_GET,  [](AsyncWebServerRequest *request){overTorqueCheck=false;               writeConfig(); handleRoot(request);});
-  server.on("/enableOperationTimeControl", HTTP_GET,  [](AsyncWebServerRequest *request){disableMovingTimeControl=false;      writeConfig(); handleRoot(request);});
-  server.on("/disableOperationTimeControl",HTTP_GET,  [](AsyncWebServerRequest *request){disableMovingTimeControl=true;       writeConfig(); handleRoot(request);});
-  server.on("/resetOperationTimeControl",  HTTP_GET,  [](AsyncWebServerRequest *request){disableMovingTimeControl=true;       unsetMeasureTime(OPEN); unsetMeasureTime(CLOSE); writeConfig(); handleRoot(request);});
-  server.on("/about",                      HTTP_GET,  [](AsyncWebServerRequest *request){request->send(200, "text/plain", "Hello world!..."); });
+  server.on("/",                           HTTP_GET,  [](AsyncWebServerRequest *request){handleRoot(request);} );
+  server.on("/",                           HTTP_POST, [](AsyncWebServerRequest *request){handleRoot(request);} );
+  server.on("/status",                     HTTP_GET,  [](AsyncWebServerRequest *request){request->send(200, "text/plain", (isClosed() ?"[-1]" :(isOpened() ?"[1]" : "[0]")));} );
+  server.on("/open",                       HTTP_GET,  [](AsyncWebServerRequest *request){startOpening();  handleRoot(request);} );
+  server.on("/close",                      HTTP_GET,  [](AsyncWebServerRequest *request){startClosing();  handleRoot(request);} );
+  server.on("/stop",                       HTTP_GET,  [](AsyncWebServerRequest *request){stopMotors();    handleRoot(request);} );
+  server.on("/allowAutoClose",             HTTP_GET,  [](AsyncWebServerRequest *request){setAutoClose(DEFAULTAUTOCLOSEDELAY); writeConfig(); handleRoot(request);} );
+  server.on("/disableAutoClose",           HTTP_GET,  [](AsyncWebServerRequest *request){disableAutoClose();                  writeConfig(); handleRoot(request);} );
+  server.on("/allowDetection",             HTTP_GET,  [](AsyncWebServerRequest *request){disabledDetection=((deepSleepEnabled() && (COMMAND>HIGHPINS || DETECT>HIGHPINS)) ?true :false); writeConfig(); handleRoot(request);} );
+  server.on("/disableDetection",           HTTP_GET,  [](AsyncWebServerRequest *request){disabledDetection=true;              writeConfig(); handleRoot(request);} );
+  server.on("/enableDeepSleep",            HTTP_GET,  [](AsyncWebServerRequest *request){enableDeepSleep();                   writeConfig(); handleRoot(request);} );
+  server.on("/disableDeepSleep",           HTTP_GET,  [](AsyncWebServerRequest *request){disableDeepSleep();                  writeConfig(); handleRoot(request);} );
+//server.on("/forward",                    HTTP_GET,  [](AsyncWebServerRequest *request){place=false;                         writeConfig(); handleRoot(request);} );
+//server.on("/reverse",                    HTTP_GET,  [](AsyncWebServerRequest *request){place=true;                          writeConfig(); handleRoot(request);} );
+  server.on("/enableTorqueeCheck",          HTTP_GET,  [](AsyncWebServerRequest *request){overTorqueCheck=true;                writeConfig(); handleRoot(request);} );
+  server.on("/disableoverTorqueCheck",     HTTP_GET,  [](AsyncWebServerRequest *request){overTorqueCheck=false;               writeConfig(); handleRoot(request);} );
+  server.on("/enableOperationTimeControl", HTTP_GET,  [](AsyncWebServerRequest *request){disableMovingTimeControl=false;      writeConfig(); handleRoot(request);} );
+  server.on("/isOperationTimeControlEnabled",HTTP_GET,[](AsyncWebServerRequest *request){request->send(200, "text/plain", ((isValidMovingTime(OPEN)||isValidMovingTime(CLOSE)) ?"[1]" :"[0]"));} );
+  server.on("/disableOperationTimeControl",HTTP_GET,  [](AsyncWebServerRequest *request){disableMovingTimeControl=true;       writeConfig(); handleRoot(request);} );
+  server.on("/resetOperationTimeControl",  HTTP_GET,  [](AsyncWebServerRequest *request){disableMovingTimeControl=true;       unsetMeasureTime(OPEN); unsetMeasureTime(CLOSE); writeConfig(); handleRoot(request);} );
+  server.on("/about",                      HTTP_GET,  [](AsyncWebServerRequest *request){request->send(200, "text/plain", "Hello world!..."); } );
   #endif
 
   DEBUG_println("Hello World!");
