@@ -28,7 +28,7 @@
 #endif
 
 //Ajust the following:
-uint8_t ResetConfig   = 1;      //Just change this value to reset current outputs config on the next boot...
+uint8_t ResetConfig   = 2;      //Just change this value to reset current outputs config on the next boot...
 #define HOSTNAME        "Sliding-Gate" //Can be change by interface
 #define DEFAULTWIFIPASS "defaultPassword"
 #define MAXWIFIERRORS   10      //Attempts before host mode...
@@ -42,7 +42,7 @@ gpio_num_t gpio[]     = {GPIO_NUM_13, GPIO_NUM_12, GPIO_NUM_14, GPIO_NUM_0,  GPI
 #define CLOSE                     false
 #define DEEPSLEEPDELAY            120000
 #define DEFAULTAUTOCLOSEDELAY     30000
-#define MAXAUTOCLOSEDELAY         120000
+#define MAXAUTOCLOSEDELAY         300000
 #define EMULATEBLINKING           1500
 #define MAXIMUMOPERATINGTIME      25000
 #define MILLISEC()                (millis()+MAXIMUMOPERATINGTIME)
@@ -51,9 +51,8 @@ gpio_num_t gpio[]     = {GPIO_NUM_13, GPIO_NUM_12, GPIO_NUM_14, GPIO_NUM_0,  GPI
 #define resetDeepSleepDelay()     deepSleepDelay=DEEPSLEEPDELAY/LOOPDELAY
 #define enableDeepSleep()         disableDeepSleep=false
 #define disableDeepSleep()        disableDeepSleep=true
-#define deepSleepEnabled()        disableDeepSleep==false
-#define setAutoClose(n)           autoclose=( (n<0) ?-1 :(((n<DEFAULTAUTOCLOSEDELAY) ?DEFAULTAUTOCLOSEDELAY :n)/LOOPDELAY) );
-#define resetAutoClose()          autocloseDelay=autoclose
+#define setAutoClose(n)           autoclose=( (n<0) ?-1 :((n<DEFAULTAUTOCLOSEDELAY) ?DEFAULTAUTOCLOSEDELAY :n) );
+#define resetAutoClose()          autocloseDelay=autoclose/LOOPDELAY
 #define disableAutoClose()        setAutoClose(-1)
 #define isAutocloseEnabled()      autoclose>=0
 #define shouldAutoclosing()       !autocloseDelay
@@ -67,7 +66,7 @@ unsigned short   WiFiCount=0, resetDeepSleepDelay();
 int              setAutoClose(DEFAULTAUTOCLOSEDELAY);
 unsigned int     blink=0, resetAutoClose();
 bool place=true, direction=OPEN, activatedCommand=false, shouldReboot=false;
-bool disabledDetection=true, enableDeepSleep(), disableMovingTimeControl=false, overTorqueCheck=false, closedLimit=true, openedLimit=false;
+bool disabledDetection=true, enableDeepSleep(), disableMovingTimeControl=false, disableOverTorqueCheck=true, closedLimit=true, openedLimit=false;
 #ifdef WEBUI
 //see: PNG to base64 converter...
 String gateMovingPng= "image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAaoAAABkCAYAAADXGnSGAAAAAXNSR0IDN8dNUwAAAAlwSFlzAAALEgAACxIB0t1+/AAABHtJREFUeNrt3N9rW2UYB/AnS5p0drPrilXcxjrrpFD8wXSiSKVlXk0Rb/Rm4J3+I/4NIuitXujF6IW9tui9XhUGim4VJ46VUTthCUljy9qOtulZ2pw0ycnnA4WQNM95z/u+J9/znvzI1ddFRiy0+PyZAMeCY4FuU8jSzszOLR76ufPTUxGjJgSOBccC3eaYLgBAUAGAoAJAUAGAoAIAQQWAoAIgUX3zj0QFXQDQITldYEUFgKACgHZy6Y+WLegCY0pXmhFU8Min33wf+/2+cS63/4X4pYHn43z1jz337621llijF5yr/LrvY0l99PDxfOLje/pr6HxLbf3k6/mHvb7erHqL76PkN4cujVpb9dKq9Ti3CxOJY5f6uCXM8+rmth7Xpq12fXntPSsqSCssbhUubN8uF2t7Hi9V8pnooz+LF1Pfx921HtWptdjWCZO6wdhpk6CihzV68e100KQdelkO0Ub7mtV9y4pqqRy1en+8hAsqeiLs6I3+6uaTg6ydaOSiGEmXCrPEp/4AelCp2j/7akUFkMIK7ahXZ4U++kkLKyqAHjCUL++8neufS+VWVABdsipLWpn9VyvtuD0Wy7FSPCWoIA0PPpps6v9yc4sN779+ZTKujh58u2nWG/zuRmq1GrUr7Tr77ftBpNmmDWmNYZrz4bC1Gs2HTsyFNMa5F7j0B4CgAgBBBYCgAgBBBQCCCgBBBQCCCgBBBQCCCgAEFQCCCgAEFQCCCgAEFQAIKgAEFQAIKgAEFQAIKgAQVAAIKgAQVAAIKl0AgKACAEEFgKACAEEFAIIKAEEFAIIKAEEFAIIKAAQVAIIKAAQVAIIKAAQVAAgqAAQVAAgqAAQVAAgqABBUAAgqABBUAAgqABBUACCoABBUACCoAEBQASCoAEBQASCoAEBQAYCgAkBQAYCgAkBQAYCgAgBBBYCgAgBBBUA/KugC2m2hS2q0q95CRuuolY0xzIJcfV1mdmZu8dDPnZ+eiqujJsRhD6rZhL4vVfJN1SkXay09v5l6h62VZr2jqLNfXzZ7LLz702JH960d9drdtk70V9I4//DBVMxYUQHQTGh0ok6WCCq6WitnvP22T1nsKxBUCDlBIPQQVODFsX/6q5tPDsyv3uXj6QBYUZFtM+t/P14+G6uDw13Rno+/+iKWJ9+O4fq9WMmNbJ9N736T+lL13/hs9s2e3WaSjU/tteL6lUkTu4kxbuSoxjjJyQcrMS2oYKfpM8Nd05bXnhuPperf8fva2YiEj7zPXngqta8kdGKb7eSrGk2OcXl1fWBPduEYD2eq7136I3MmTo/F8tLtHfdtrWzO1Y/HxTt348PqrXhxsLe3Sefn1VZIGWMrKjiQz995Ne7lBuLnf/6Km3FmOzQ2znbvRCVmThyPN8ZH4+WxkZ7eJtmfVwgqMuz9Sy/FyI3f4pebS7FarsWx+7ko5fIx8cyz8fr4C/HW08V45fQTPb9Nsj+vyNhPKMFu396txf1KJQrH8vHkUDFOrL+GnFqLuDyQrW2S/XklqACgS/0PWnCl069GubEAAAAASUVORK5CYII=";
@@ -190,7 +189,7 @@ void securityCheck(){
     }
 
     //Torques check:
-    if(overTorqueCheck && (getPin(OPENTORQUE) || getPin(CLOSETORQUE))){
+    if(!disableOverTorqueCheck && (getPin(OPENTORQUE) || getPin(CLOSETORQUE))){
       stopMotors();
       direction=!direction;
       disableAutoClose();
@@ -263,7 +262,7 @@ String  getPage(){
   page += "e=document.getElementById('example2');\ne.innerHTML=document.URL+'status'; e.href=e.innerHTML;\n";
   page += "refresh();\n";
   page += "}\n";
-  page += "function refresh(v=" + ultos(autocloseDelay*LOOPDELAY/1000) + "){clearTimeout(this.timer);\n";
+  page += "function refresh(v=" + ultos(autoclose/1000) + "){clearTimeout(this.timer);\n";
   page += "document.getElementById('about').style.display='none';\n";
   page += "this.timer=setTimeout(function(){/*location.reload(true)*/;\n";
   page += "getStatus(); refresh(v);\n";
@@ -284,10 +283,6 @@ String  getPage(){
   page += "  document.getElementById('close').className='close'; document.getElementById('open').className='open';\n";
   page += "  document.getElementById('close').disabled=true;     document.getElementById('open').disabled=true;\n";
   page += "}}, 1500);}\n";
-  page += "function isMovingtimeDisabled(e){\n";
-  page += "var ret, req=new XMLHttpRequest(); req.open('GET', document.URL+'isOperationTimeControlEnabled', false); req.send(null);\n";
-  page += "ret=req.responseText; ret=parseInt(ret.substr(1,ret.length-2));\n";
-  page += "document.getElementById('movingtime').disabled=document.getElementById('resetOperatingTime').disabled=!ret;}\n";
   page += "function showHelp(){refresh(120); document.getElementById('about').style.display='block';}\n";
   page += "function saveSSID(f){\n";
   page += "if((f=f.parentNode)){var s, p=false;\n";
@@ -370,13 +365,13 @@ String  getPage(){
   page += "<div class='ligne'></div>\n";
   page += "<div class='ligne'>\n";
   page += "<div class='libelle'> Autoclosing </div>\n";
-  page += "<div class='value'>:&nbsp; <input name='autoclose' value='" + (String)(isAutocloseEnabled() ?ultos(autoclose*LOOPDELAY/1000) :"-1") + "' data-unit='1' min='-1'\n";
+  page += "<div class='value'>:&nbsp; <input name='autoclose' value='" + (String)(isAutocloseEnabled() ?ultos(autoclose/1000) :"-1") + "' data-unit='1' min='-1'\n";
   page += "max='" + ultos(MAXAUTOCLOSEDELAY/1000) + "' class='duration' step='1' onchange='checkDelay(this, " + ultos(DEFAULTAUTOCLOSEDELAY/1000) + ");'\n";
   page += "type='number'>&nbsp;secondes</div>\n";
   page += "</div>\n";
   page += "<div class='ligne'>\n";
   page += "<div class='libelle'> Operating time control </div>\n";
-  page += "<div class='value'>:&nbsp; <input " + (String)(!disableMovingTimeControl ?"checked" :"") + " " + ((isValidMovingTime(OPEN)||isValidMovingTime(CLOSE)) ?"" :"disabled") + " id='movingtime' name='movingtime' type='checkbox' onchange='submit();' onmouseover='this.disabled=false;' onmouseout='isMovingtimeDisabled();'>\n";
+  page += "<div class='value'>:&nbsp; <input " + (String)(!disableMovingTimeControl ?"checked" :"") + " id='movingtime' name='movingtime' type='checkbox' onchange='submit();'>\n";
   page += "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<button id='resetOperatingTime' name='resetOperatingTime' title='Remeasure the operating time' style='height:25px;' " + (String)((isValidMovingTime(OPEN)||isValidMovingTime(CLOSE)) ?"" :"disabled") + ">Reset measures</button></div>\n";
   page += "</div>\n";
   page += "<div class='ligne'>\n";
@@ -385,11 +380,11 @@ String  getPage(){
   page += "</div>\n";
   page += "<div class='ligne'>\n";
   page += "<div class='libelle'> Allows deep sleep </div>\n";
-  page += "<div class='value'>:&nbsp; <input name='deepsleep' " + (String)(deepSleepEnabled() ?"checked" :"") + " type='checkbox' onchange='submit();'></div>";
+  page += "<div class='value'>:&nbsp; <input name='deepsleep' " + (String)(disableDeepSleep ?"" :"checked") + " type='checkbox' onchange='submit();'></div>";
   page += "</div>\n";
   page += "<div class='ligne'>\n";
   page += "<div class='libelle'> Allows control of the motor torque </div>\n";
-  page += "<div class='value'>:&nbsp; <input name='torque' type='checkbox' " + (String)(overTorqueCheck ?"checked" :"") + " onchange='submit();'></div>\n";
+  page += "<div class='value'>:&nbsp; <input name='torque' type='checkbox' " + (String)(disableOverTorqueCheck ?"" :"checked") + " onchange='submit();'></div>\n";
   page += "</form></div>\n";
   page += "</div>\n";
 
@@ -444,7 +439,7 @@ bool WiFiConnect(){
 }
 #endif
 
-bool readConfig(bool);
+bool readConfig(bool=true);
 void writeConfig(){        //Save current config:
   if(!readConfig(false))
     return;
@@ -460,12 +455,12 @@ void writeConfig(){        //Save current config:
         i++;
     } }while(i++<SSIDMax()){f.println(); f.println();}
     f.println(disabledDetection);
-    f.println(autoclose); setAutoClose(autoclose);
+    f.println(autoclose);
     f.println(place);
-    f.println(movingTime[OPEN]);
-    f.println(movingTime[CLOSE]);
+    f.println((signed)movingTime[OPEN]);
+    f.println((signed)movingTime[CLOSE]);
     f.println(disableMovingTimeControl);
-    f.println(overTorqueCheck);
+    f.println(disableOverTorqueCheck);
     f.close();
   }
   #ifdef WITHWIFI
@@ -474,12 +469,11 @@ void writeConfig(){        //Save current config:
 }
 
 String readString(File f){ String ret=f.readStringUntil('\n'); ret.remove(ret.indexOf('\r')); return ret; }
-inline bool getConfig(String        &v, File f, bool w){String          r=readString(f);               if(r==v) return false; if(w)v=r; return true;}
-inline bool getConfig(int           &v, File f, bool w){int             r=atoi(readString(f).c_str()); if(r==v) return false; if(w)v=r; return true;}
-inline bool getConfig(long          &v, File f, bool w){long            r=atol(readString(f).c_str()); if(r==v) return false; if(w)v=r; return true;}
-inline bool getConfig(unsigned long &v, File f, bool w){unsigned long   r=atol(readString(f).c_str()); if(r==v) return false; if(w)v=r; return true;}
-inline bool getConfig(bool          &v, File f, bool w){bool            r=atol(readString(f).c_str()); if(r==v) return false; if(w)v=r; return true;}
-bool readConfig(bool w=true){      //Get config (return false if config is not modified):
+inline bool getConfig(String        &v, File f, bool w){String r=readString(f);               if(r==v) return false; if(w)v=r; return true;}
+inline bool getConfig(bool          &v, File f, bool w){bool   r=atoi(readString(f).c_str()); if(r==v) return false; if(w)v=r; return true;}
+inline bool getConfig(int           &v, File f, bool w){int    r=atoi(readString(f).c_str()); if(r==v) return false; if(w)v=r; return true;}
+inline bool getConfig(long          &v, File f, bool w){long   r=atol(readString(f).c_str()); if(r==v) return false; if(w)v=r; return true;}
+bool readConfig(bool w){      //Get config (return false if config is not modified):
   bool ret=false;
   File f=SPIFFS.open("/config.txt", "r");
   if(f && ResetConfig!=atoi(readString(f).c_str())) f.close();
@@ -495,13 +489,13 @@ bool readConfig(bool w=true){      //Get config (return false if config is not m
     ret|=getConfig(ssid[i], f, w);
     ret|=getConfig(password[i], f, w);
   }if(!ssid[0].length()) password[0]=DEFAULTWIFIPASS; //Default values
-  ret|=getConfig(disabledDetection, f, w); if(deepSleepEnabled() && (COMMAND>HIGHPINS || DETECT>HIGHPINS)) disabledDetection=true;
-  ret|=getConfig(autoclose, f, w);
+  ret|=getConfig(disabledDetection, f, w); disabledDetection|=((!disableDeepSleep && (COMMAND>HIGHPINS || DETECT>HIGHPINS)) ?true :false);
+  ret|=getConfig(autoclose, f, w); setAutoClose(autoclose);
   ret|=getConfig(place, f, w);
-  ret|=getConfig(movingTime[OPEN],  f, w); if(shouldMeasureTime(OPEN))  unsetMeasureTime(OPEN);
-  ret|=getConfig(movingTime[CLOSE], f, w); if(shouldMeasureTime(CLOSE)) unsetMeasureTime(CLOSE);
+  ret|=getConfig((signed&)movingTime[OPEN],  f, w); if(shouldMeasureTime(OPEN))  unsetMeasureTime(OPEN);
+  ret|=getConfig((signed&)movingTime[CLOSE], f, w); if(shouldMeasureTime(CLOSE)) unsetMeasureTime(CLOSE);
   ret|=getConfig(disableMovingTimeControl, f, w);
-  ret|=getConfig(overTorqueCheck, f, w);
+  ret|=getConfig(disableOverTorqueCheck, f, w);
   f.close(); return ret;
 }
 
@@ -535,13 +529,13 @@ void  handleMainForm(AsyncWebServerRequest *request){
     return;
   }
   setAutoClose(atoi(request->arg("autoclose").c_str())*1000);
-  disableMovingTimeControl=true; if(request->hasArg("movingtime")) disableMovingTimeControl=false;
+  disableMovingTimeControl= !request->hasArg("movingtime");
   if(request->hasArg("resetOperatingTime")) {unsetMeasureTime(OPEN); unsetMeasureTime(CLOSE);}
-  { disabledDetection=true; if(request->hasArg("detection")) disabledDetection=false;
-    disabledDetection&=((COMMAND>HIGHPINS || DETECT>HIGHPINS) ?true :false);
+  { disabledDetection= !request->hasArg("detection");
+    disabledDetection|=((!disableDeepSleep && (COMMAND>HIGHPINS || DETECT>HIGHPINS)) ?true :false);
   }
-  disableDeepSleep(); if(request->hasArg("deepsleep")) enableDeepSleep();
-  overTorqueCheck=false; if(request->hasArg("torque")) overTorqueCheck=true;
+  if(request->hasArg("deepsleep")) enableDeepSleep(); else disableDeepSleep();
+  disableOverTorqueCheck= !request->hasArg("torque");
   writeConfig();
 }
 
@@ -582,7 +576,7 @@ void handleInterrupt(){     // Inputs treatment:
         break;
       case OPENTORQUE:
       case CLOSETORQUE:
-        if(!overTorqueCheck)
+        if(disableOverTorqueCheck)
           break;
         stopMotors();
         direction=!direction;
@@ -660,7 +654,7 @@ void OTASetup(){;
     else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
     else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
     else if (error == OTA_END_ERROR) Serial.println("End Failed");
-  });disableDeepSleep();
+  });
   ArduinoOTA.begin();
   SPIFFS.begin();
 #endif
@@ -722,18 +716,18 @@ void setup(){
   server.on("/stop",                       HTTP_GET,  [](AsyncWebServerRequest *request){stopMotors();    handleRoot(request);} );
   server.on("/allowAutoClose",             HTTP_GET,  [](AsyncWebServerRequest *request){setAutoClose(DEFAULTAUTOCLOSEDELAY); writeConfig(); handleRoot(request);} );
   server.on("/disableAutoClose",           HTTP_GET,  [](AsyncWebServerRequest *request){disableAutoClose();                  writeConfig(); handleRoot(request);} );
-  server.on("/allowDetection",             HTTP_GET,  [](AsyncWebServerRequest *request){disabledDetection=((deepSleepEnabled() && (COMMAND>HIGHPINS || DETECT>HIGHPINS)) ?true :false); writeConfig(); handleRoot(request);} );
+  server.on("/allowDetection",             HTTP_GET,  [](AsyncWebServerRequest *request){disabledDetection=((!disableDeepSleep && (COMMAND>HIGHPINS || DETECT>HIGHPINS)) ?true :false); writeConfig(); handleRoot(request);} );
   server.on("/disableDetection",           HTTP_GET,  [](AsyncWebServerRequest *request){disabledDetection=true;              writeConfig(); handleRoot(request);} );
   server.on("/enableDeepSleep",            HTTP_GET,  [](AsyncWebServerRequest *request){enableDeepSleep();                   writeConfig(); handleRoot(request);} );
   server.on("/disableDeepSleep",           HTTP_GET,  [](AsyncWebServerRequest *request){disableDeepSleep();                  writeConfig(); handleRoot(request);} );
 //server.on("/forward",                    HTTP_GET,  [](AsyncWebServerRequest *request){place=false;                         writeConfig(); handleRoot(request);} );
 //server.on("/reverse",                    HTTP_GET,  [](AsyncWebServerRequest *request){place=true;                          writeConfig(); handleRoot(request);} );
-  server.on("/enableTorqueeCheck",          HTTP_GET,  [](AsyncWebServerRequest *request){overTorqueCheck=true;                writeConfig(); handleRoot(request);} );
-  server.on("/disableoverTorqueCheck",     HTTP_GET,  [](AsyncWebServerRequest *request){overTorqueCheck=false;               writeConfig(); handleRoot(request);} );
+  server.on("/enableTorqueeCheck",          HTTP_GET,  [](AsyncWebServerRequest *request){disableOverTorqueCheck=false;       writeConfig(); handleRoot(request);} );
+  server.on("/disableoverTorqueCheck",     HTTP_GET,  [](AsyncWebServerRequest *request){disableOverTorqueCheck=true;         writeConfig(); handleRoot(request);} );
   server.on("/enableOperationTimeControl", HTTP_GET,  [](AsyncWebServerRequest *request){disableMovingTimeControl=false;      writeConfig(); handleRoot(request);} );
   server.on("/isOperationTimeControlEnabled",HTTP_GET,[](AsyncWebServerRequest *request){request->send(200, "text/plain", ((isValidMovingTime(OPEN)||isValidMovingTime(CLOSE)) ?"[1]" :"[0]"));} );
   server.on("/disableOperationTimeControl",HTTP_GET,  [](AsyncWebServerRequest *request){disableMovingTimeControl=true;       writeConfig(); handleRoot(request);} );
-  server.on("/resetOperationTimeControl",  HTTP_GET,  [](AsyncWebServerRequest *request){disableMovingTimeControl=true;       unsetMeasureTime(OPEN); unsetMeasureTime(CLOSE); writeConfig(); handleRoot(request);} );
+  server.on("/resetOperationTimeControl",  HTTP_GET,  [](AsyncWebServerRequest *request){unsetMeasureTime(OPEN); unsetMeasureTime(CLOSE); writeConfig(); handleRoot(request);} );
   server.on("/about",                      HTTP_GET,  [](AsyncWebServerRequest *request){request->send(200, "text/plain", "Hello world!..."); } );
   #endif
 
@@ -750,7 +744,7 @@ void loop(){
     delay(500);
     ESP.restart();
   }if(isClosed()){
-    if(deepSleepEnabled() && !--deepSleepDelay){ //deepSleep management:
+    if(!disableDeepSleep && !--deepSleepDelay){ //deepSleep management:
       DEBUG_println("DEEPSLEEP!...");
       writeConfig();
       esp_deep_sleep_start();
