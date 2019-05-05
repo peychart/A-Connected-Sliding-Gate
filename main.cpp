@@ -247,7 +247,7 @@ void  sendHTML(AsyncWebServerRequest *request){
   s += " e=document.getElementById('example2'); e.innerHTML=document.URL+'status'; e.href=e.innerHTML;\n";
   s += " getStatus(); refresh();\n";
   s += "}\n";
-  s += "function refresh(v=30){clearTimeout(this.timer);\n";
+  s += "function refresh(v=" + String((autoclose==-1 ?DEFAULTAUTOCLOSEDELAY :autoclose), DEC) + "){clearTimeout(this.timer);\n";
   s += " document.getElementById('about').style.display='none';\n";
   s += " this.timer=setTimeout(function(){/*location.reload(true)*/;\n";
   s += " getStatus(); refresh(v);\n";
@@ -667,11 +667,6 @@ void setup(){
 
   Serial.begin(115200);
 
-  //Awake from deepSleep with AWAKE pin;
-  delay(100L); if(getPin(COMMAND)){   //It's a wake up:
-    direction=OPEN; activatedCommand=millis();
-  }
-
 #ifdef WEBUI
   //Definition des URL d'entree /Input URL definition
   server.on("/",                             HTTP_GET,  [](AsyncWebServerRequest *request){handleRoot(request); resetDeepSleepDelay();} );
@@ -717,13 +712,17 @@ void setup(){
       //    case PLACE:       attachInterrupt(digitalPinToInterrupt(gpio[i]), place_intr,       (i<HIGHPINS ?RISING :FALLING)); break;
   } }
 
-  //Pin(s) wake up config:
+//Pin(s) wake up config:
   if(COMMAND>HIGHPINS || DETECT>HIGHPINS)
         esp_sleep_enable_ext0_wakeup(gpio[COMMAND], LOW);
   else  esp_sleep_enable_ext1_wakeup(BIT(gpio[COMMAND]) & BIT(gpio[DETECT]), ESP_EXT1_WAKEUP_ANY_HIGH);
 
   Serial.println("Hello World!");
-}
+
+  //Awake from deepSleep with AWAKE pin;
+  if(getPin(COMMAND)){   //It's a wake up:
+    direction=OPEN; activatedCommand=millis(); activatedCommand=MAX(activatedCommand, DEBOUNCE_TIME);
+} }
 
 ////////////////////////////////////// LOOP ////////////////////////////////////////////////
 
@@ -783,8 +782,8 @@ void loop(){
   if(EMULATEBLINKING && getPin(LIGHT) && isNow(blink)){
     if(digitalRead(gpio[LIGHT])==HIGH){
       digitalWrite(gpio[LIGHT], LOW);
-      blink=millis()+MIN(EMULATEBLINKING-1000,1000);
+      blink=millis()+MIN(EMULATEBLINKING-1000, 1000);
     }else{
       digitalWrite(gpio[LIGHT], HIGH);
-      blink=millis()+MAX(EMULATEBLINKING,1000);
+      blink=millis()+MAX(EMULATEBLINKING, 1000);
 } } }
