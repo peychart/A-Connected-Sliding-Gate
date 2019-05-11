@@ -18,8 +18,7 @@ A C++ code that controls the different elements of a sliding gate, namely:
 - control of the opening and closing times,
 - a web interface,
 - OTA code update.
-- integrable into home automation tools (domoticz, jeedom, ...) via http interfa
-ces.
+- integrable into home automation tools (domoticz, jeedom, ...) via http interfaces.
 
 interface board: ![](doc/images/switchBoard.png)
 
