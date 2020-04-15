@@ -34,7 +34,7 @@ WiFiClient   telnetClient;
 #define OUTCON_printf(m,n) {if(telnetClient && telnetClient.connected())telnetClient.printf(m,n); else Serial.printf(m,n);}
 
 //Ajust the following:
-int     ResetConfig   = 10;      //Just change this value to reset current outputs config on the next boot...
+int     ResetConfig   = 1;      //Just change this value to reset current outputs config on the next boot...
 #define DEFAULTHOSTNAME "Sliding-Gate" //Can be change by interface
 #define DEFAULTWIFIPASS "defaultPassword"
 #define SSIDCount()     3
@@ -69,7 +69,7 @@ gpio_num_t gpio[]     = {GPIO_NUM_13, GPIO_NUM_12, GPIO_NUM_14, GPIO_NUM_0,  GPI
 int                                 setAutoCloseDelay(DEFAULTAUTOCLOSEDELAY);
 unsigned long                       next_reconnect=0L, openingValue=0L, movingStart, maxOpeningValue=MAXIMUMOPERATINGTIME;
 unsigned long                       resetAutoCloseCount(), resetDeepSleepDelay(), debounceDelay=0L, blink=-1L;
-bool                                place=true, direction=OPEN, closedLimit=true, openedLimit=false;
+bool                                place=true, lastDirection=OPEN, closedLimit=true, openedLimit=false;
 bool                                disabledDetection=true, enableDeepSleep(), disableMovingTimeControl=false, disableOverTorqueCheck=true;
 //see: PNG to base64 converter...
 String gateMovingPng= "image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAaoAAABkCAYAAADXGnSGAAAAAXNSR0IDN8dNUwAAAAlwSFlzAAALEgAACxIB0t1+/AAABHtJREFUeNrt3N9rW2UYB/AnS5p0drPrilXcxjrrpFD8wXSiSKVlXk0Rb/Rm4J3+I/4NIuitXujF6IW9tui9XhUGim4VJ46VUTthCUljy9qOtulZ2pw0ycnnA4WQNM95z/u+J9/znvzI1ddFRiy0+PyZAMeCY4FuU8jSzszOLR76ufPTUxGjJgSOBccC3eaYLgBAUAGAoAJAUAGAoAIAQQWAoAIgUX3zj0QFXQDQITldYEUFgKACgHZy6Y+WLegCY0pXmhFU8Min33wf+/2+cS63/4X4pYHn43z1jz337621llijF5yr/LrvY0l99PDxfOLje/pr6HxLbf3k6/mHvb7erHqL76PkN4cujVpb9dKq9Ti3CxOJY5f6uCXM8+rmth7Xpq12fXntPSsqSCssbhUubN8uF2t7Hi9V8pnooz+LF1Pfx921HtWptdjWCZO6wdhpk6CihzV68e100KQdelkO0Ub7mtV9y4pqqRy1en+8hAsqeiLs6I3+6uaTg6ydaOSiGEmXCrPEp/4AelCp2j/7akUFkMIK7ahXZ4U++kkLKyqAHjCUL++8neufS+VWVABdsipLWpn9VyvtuD0Wy7FSPCWoIA0PPpps6v9yc4sN779+ZTKujh58u2nWG/zuRmq1GrUr7Tr77ftBpNmmDWmNYZrz4bC1Gs2HTsyFNMa5F7j0B4CgAgBBBYCgAgBBBQCCCgBBBQCCCgBBBQCCCgAEFQCCCgAEFQCCCgAEFQAIKgAEFQAIKgAEFQAIKgAQVAAIKgAQVAAIKl0AgKACAEEFgKACAEEFAIIKAEEFAIIKAEEFAIIKAAQVAIIKAAQVAIIKAAQVAAgqAAQVAAgqAAQVAAgqABBUAAgqABBUAAgqABBUACCoABBUACCoAEBQASCoAEBQASCoAEBQAYCgAkBQAYCgAkBQAYCgAgBBBYCgAgBBBUA/KugC2m2hS2q0q95CRuuolY0xzIJcfV1mdmZu8dDPnZ+eiqujJsRhD6rZhL4vVfJN1SkXay09v5l6h62VZr2jqLNfXzZ7LLz702JH960d9drdtk70V9I4//DBVMxYUQHQTGh0ok6WCCq6WitnvP22T1nsKxBUCDlBIPQQVODFsX/6q5tPDsyv3uXj6QBYUZFtM+t/P14+G6uDw13Rno+/+iKWJ9+O4fq9WMmNbJ9N736T+lL13/hs9s2e3WaSjU/tteL6lUkTu4kxbuSoxjjJyQcrMS2oYKfpM8Nd05bXnhuPperf8fva2YiEj7zPXngqta8kdGKb7eSrGk2OcXl1fWBPduEYD2eq7136I3MmTo/F8tLtHfdtrWzO1Y/HxTt348PqrXhxsLe3Sefn1VZIGWMrKjiQz995Ne7lBuLnf/6Km3FmOzQ2znbvRCVmThyPN8ZH4+WxkZ7eJtmfVwgqMuz9Sy/FyI3f4pebS7FarsWx+7ko5fIx8cyz8fr4C/HW08V45fQTPb9Nsj+vyNhPKMFu396txf1KJQrH8vHkUDFOrL+GnFqLuDyQrW2S/XklqACgS/0PWnCl069GubEAAAAASUVORK5CYII=";
@@ -118,7 +118,7 @@ void securityCheck(){if(isMoving()){
 
   //PhotoBeam check:
   if(isClosing() && getPin(PHOTOBEAM)){
-    stopMotors(); direction=CLOSE;
+    stopMotors(); lastDirection=CLOSE;
     OUTCON_println("PHOTOBEAM (secure detect!)");
   }
 
@@ -134,9 +134,9 @@ void securityCheck(){if(isMoving()){
   }
 
   //Soft limit detection:
-  if(!isValidMovingTimeControl(direction)){
+  if(!isValidMovingTimeControl(lastDirection)){
     stopMotors();
-    if(direction==OPEN)
+    if(lastDirection==OPEN)
           closedLimit=true;
     else  openedLimit=true;
     OUTCON_println("SOFTLIMIT (secure detect!)");
@@ -160,7 +160,7 @@ void stopMotors(){
   digitalWrite(gpio[MOTORR], LOW); digitalWrite(gpio[MOTORF], LOW);
   if(value[LIGHT] || value[MOTORF] || value[MOTORR]){
     value[MOTORR]=value[MOTORF]=value[LIGHT]=LOW;
-    stopMovingTimeMeasure(direction); direction=!direction; delay(500L); setOffLight(); resetAutoCloseCount();
+    stopMovingTimeMeasure(lastDirection); lastDirection=!lastDirection; delay(500L); setOffLight(); resetAutoCloseCount();
     OUTCON_println("Motor stopped.");
   }resetDeepSleepDelay(); debounceDelay=millis()+DEBOUNCE_TIME;
 }
@@ -168,11 +168,11 @@ void stopMotors(){
 void startOpening(){
   stopMotors();
   if(isOpened()){
-    direction=CLOSE;
+    lastDirection=CLOSE;
     OUTCON_println("OPENINGLIMIT up.");
     return;
   }OUTCON_println("OPENING...");
-  setOnLight(); direction=OPEN; initMovingTimeMeasure(); closedLimit=false;
+  setOnLight(); lastDirection=OPEN; initMovingTimeMeasure(); closedLimit=false;
   digitalWrite(gpio[!place ?MOTORR : MOTORF], value[(!place) ?MOTORR : MOTORF]=HIGH);
   securityCheck();
 }
@@ -180,15 +180,15 @@ void startOpening(){
 void startClosing(){
   stopMotors();
   if(getPin(PHOTOBEAM)){
-    direction=CLOSE;
+    lastDirection=CLOSE;
     OUTCON_println("PHOTOBEAM up!");
     return;
   }if(isClosed()){
-    direction=OPEN;
+    lastDirection=OPEN;
     OUTCON_println("CLOSINGLIMIT up.");
     return;
   }OUTCON_println("CLOSING...");
-  setOnLight(); direction=CLOSE; initMovingTimeMeasure(); openedLimit=false;
+  setOnLight(); lastDirection=CLOSE; initMovingTimeMeasure(); openedLimit=false;
   digitalWrite(gpio[!place ?MOTORF : MOTORR], value[(!place) ?MOTORF : MOTORR]=HIGH);
   securityCheck();
 }
@@ -276,22 +276,23 @@ void  sendHTML(AsyncWebServerRequest *request){
   s += "   alert('Empty SSID'); f.reset(); s.focus();\n";
   s += "  }else if(p.value==''){\n";
   s += "   var ssid=s.value; f.reset(); s.value=ssid; alert('Incorrect password'); p.focus();\n";
-  s += "  }else f.submit();\n";
-  s += "}}\n";
+  s += "  }else{ document.getElementById('configdone').checked=true; f.submit();\n";
+  s += "}}}\n";
   s += "function deleteSSID(f){\n";
   s += " if((f=f.parentNode)) for(var i=0; i<f.children.length; i++)\n";
   s += " if(f.children[i].type=='text')\n";
   s += "  if(f.children[i].value!=''){\n";
   s += "   if(confirm('Are you sure to remove this SSID?')){\n";
   s += "    for(var i=0; i<f.children.length; i++) if(f.children[i].type=='password') f.children[i].value='';\n";
-  s += "    f.submit();\n";
+  s += "    document.getElementById('configdone').checked=true; f.submit();\n";
   s += " }}else alert('Empty SSID');\n";
   s += "}\n";
   s += "var previousDelay, checkDelaySubmit=0;\n";
   s += "function checkDelay(e,min){\n";
   s += " previousDelay=e.value;if( e.value>-1 && e.value<min){if(previousDelay-e.step==-1)e.value=min;else e.value=-1;}\n";
-  s += " clearTimeout(this.checkDelaySubmit); this.checkDelaySubmit=setTimeout(function(){this.checkDelaySubmit=0; document.getElementById('mainform').submit();}, 2000);\n";
+  s += " clearTimeout(this.checkDelaySubmit); this.checkDelaySubmit=setTimeout(function(){\n  this.checkDelaySubmit=0; configSubmit();}, 2000);\n";
   s += "}\n";
+  s += "function configSubmit(){document.getElementById('configdone').checked=true; document.getElementById('mainform').submit();}\n";
   s += "</script>\n<div id='about' class='modal'><div class='modal-content'>\n";
   s += "<span class='closeHelp' onClick='refresh();'>&times;</span>\n";
   s += "<h1>About</h1>\n";
@@ -341,21 +342,22 @@ void  sendHTML(AsyncWebServerRequest *request){
   s += "</div>\n\n";
   s += "<div class='ligne'>\n";
   s += "<div class='libelle'> Operating time control </div>\n";
-  s += "<div class='value'>:&nbsp; <input " + String(!disableMovingTimeControl ?"checked" :"") + " id='movingtime' name='movingtime' type='checkbox' onchange='submit();'>\n";
+  s += "<div class='value'>:&nbsp; <input " + String(!disableMovingTimeControl ?"checked" :"") + " id='movingtime' name='movingtime' type='checkbox' onchange='configSubmit();'>\n";
   s += "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<button id='resetOperatingTime' name='resetOperatingTime' title='Remeasure the operating time' style='height:26px;' >Reset measures</button></div>\n";
   s += "</div>\n\n";
   s += "<div class='ligne'>\n";
   s += "<div class='libelle'> Presence detector function </div>\n";
-  s += "<div class='value'>:&nbsp; <input name='detection' type='checkbox' " + String(!disabledDetection ?"checked" :"") + " onchange='submit();'></div>\n";
+  s += "<div class='value'>:&nbsp; <input name='detection' type='checkbox' " + String(!disabledDetection ?"checked" :"") + " onchange='configSubmit();'></div>\n";
   s += "</div>\n\n";
   s += "<div class='ligne'>\n";
   s += "<div class='libelle'> Allows deep sleep </div>\n";
-  s += "<div class='value'>:&nbsp; <input name='deepsleep' " + String(disableDeepSleep ?"" :"checked") + " type='checkbox' onchange='submit();'></div>";
+  s += "<div class='value'>:&nbsp; <input name='deepsleep' " + String(disableDeepSleep ?"" :"checked") + " type='checkbox' onchange='configSubmit();'></div>";
   s += "</div>\n\n";
   s += "<div class='ligne'>\n";
   s += "<div class='libelle'> Allows control of the motor torque </div>\n";
-  s += "<div class='value'>:&nbsp; <input name='torque' type='checkbox' " + String(disableOverTorqueCheck ?"" :"checked") + " onchange='submit();'></div>\n";
-  s += "</div>\n</form>\n</div>\n\n";
+  s += "<div class='value'>:&nbsp; <input name='torque' type='checkbox' " + String(disableOverTorqueCheck ?"" :"checked") + " onchange='configSubmit();'></div>\n";
+  s += "</div>\n\n<div style='display:none;'><input type='checkbox' id='configdone' name='configdone'></div>\n\n";
+  s += "</form>\n</div>\n\n";
   s += "<div id='piedpage'><h6><a href='https://github.com/peychart/A-Connected-Sliding-Gate'>Website here</a>&nbsp;<a href='telnet://" + (WiFiAP ?WiFi.softAPIP().toString() :WiFi.localIP().toString()) + "'>Console here</a></h6></div>\n";
   s += "</body></html>";
   request->send(200, "text/html", s);
@@ -372,18 +374,16 @@ bool WiFiHost(){
   return WiFiAP;
 }
 
-bool WiFiConnect(){
-#ifdef WITHWIFI
-  if(debounceDelay || isMoving()) return false;
-  /*if(WiFi.status()==WL_CONNECTED){
-    //ArduinoOTA.end();
-    ESP.restart();
-    return true;
-  }*/
+inline void  WiFiDisconnect(){
   if (telnetClient) telnetClient.stop();
   WiFi.softAPdisconnect(); WiFi.disconnect(); WiFiAP=false;
   next_reconnect=millis()+(1000L*(unsigned long)(autoclose-1));
+}
 
+bool WiFiConnect(){
+#ifdef WITHWIFI
+  if(debounceDelay || isMoving()) return false;
+  WiFiDisconnect();
   Serial.println("");
   for(short i=0; i<SSIDCount(); i++) if(ssid[i].length()){
 
@@ -432,7 +432,7 @@ void shiftSSID(){
 bool readConfig(bool=true);
 void writeConfig(){                     //Save current config:
   if(!readConfig(false)) return;
-  if( !SPIFFS.begin() ){
+  if( !SPIFFS.begin(true) ){
     OUTCON_println("Cannot open SPIFFS!");
     return;
   }File f=SPIFFS.open("/config.txt", "w+");
@@ -449,7 +449,7 @@ void writeConfig(){                     //Save current config:
     f.println((signed)maxOpeningValue);
     f.println(disableMovingTimeControl);
     f.println(disableOverTorqueCheck);
-  //f.println(disableDeepSleep);
+    f.println(disableDeepSleep);
     f.close(); SPIFFS.end();
     OUTCON_println("SPIFFS writed.");
 } }
@@ -461,7 +461,7 @@ inline bool getConfig(int&    v, File f, bool w){int    r=atoi(readString(f).c_s
 inline bool getConfig(long&   v, File f, bool w){long   r=atol(readString(f).c_str()); if(r==v) return false; if(w)v=r; return true;}
 bool readConfig(bool w){      //Get config (return false if config is not modified):
   bool ret=false;
-  if( !SPIFFS.begin() ){
+  if( !SPIFFS.begin(true) ){
     OUTCON_println("Cannot open SPIFFS!");
     return false;
   }File f=SPIFFS.open("/config.txt", "r");
@@ -485,7 +485,7 @@ bool readConfig(bool w){      //Get config (return false if config is not modifi
   ret|=getConfig((long&)maxOpeningValue, f, w);
   ret|=getConfig(disableMovingTimeControl, f, w);
   ret|=getConfig(disableOverTorqueCheck, f, w);
-//ret|=getConfig(disableDeepSleep, f, w);
+  ret|=getConfig(disableDeepSleep, f, w);
   f.close(); SPIFFS.end();
   return ret;
 }
@@ -506,46 +506,53 @@ void handleSubmitSSIDConf(AsyncWebServerRequest *request){     //Setting:
     password[count]=request->arg("password");
 } }
 
-void  handleMainForm(AsyncWebServerRequest *request){
-  if(request->hasArg("open")){
+void  handleConfig(AsyncWebServerRequest *request){
+  setAutoCloseDelay( atol(request->arg("autoclose").c_str()) );
+  disableMovingTimeControl= !request->hasArg("movingtime");
+  if(!disableMovingTimeControl)
+    OUTCON_println("Moving time control enabled...");
+  {
+    disabledDetection= !request->hasArg("detection");
+    disabledDetection|=((!disableDeepSleep && (COMMAND>HIGHPINS || DETECT>HIGHPINS)) ?true :false);
+    if(!disabledDetection)
+      OUTCON_println("Presence detection enabled...");
+  }
+  if(request->hasArg("deepsleep")){
+    enableDeepSleep();
+    OUTCON_println("DeepSleep enabled...");
+  }else disableDeepSleep();
+  disableOverTorqueCheck= !request->hasArg("torque");
+  if(!disableOverTorqueCheck)
+    OUTCON_println("Check torque enabled...");
+}
+
+void  handleRoot(AsyncWebServerRequest *request){
+  if(request->hasArg("stop")){
+    stopMotors();
+    OUTCON_println("WEBUI stop command activated.");
+  }else if(request->hasArg("open")){
     if(isClosing()) stopMotors();
     if(!isOpening() && !isOpened()) startOpening();
     OUTCON_println("WEBUI open command activated.");
-    return;
   }else if(request->hasArg("close")){
     if(isOpening()) stopMotors();
     if(!isClosing() && !isClosed() && !getPin(PHOTOBEAM)) startClosing();
     OUTCON_println("WEBUI close command activated.");
-    return;
-  }else if(request->hasArg("stop")){
-    stopMotors();
-    OUTCON_println("WEBUI stop command activated.");
-    return;
-  }
-  setAutoCloseDelay( atol(request->arg("autoclose").c_str()) );
-  disableMovingTimeControl= !request->hasArg("movingtime");
-  if(request->hasArg("resetOperatingTime")){
+  }else if(request->hasArg("resetOperatingTime")){
     maxOpeningValue=MAXIMUMOPERATINGTIME;
-  }
-  {
-    disabledDetection= !request->hasArg("detection");
-    disabledDetection|=((!disableDeepSleep && (COMMAND>HIGHPINS || DETECT>HIGHPINS)) ?true :false);
-  }
-  if(request->hasArg("deepsleep")) enableDeepSleep(); else disableDeepSleep();
-  disableOverTorqueCheck= !request->hasArg("torque");
-  writeConfig();
-}
-
-void  handleRoot(AsyncWebServerRequest *request){
-  if(request->hasArg("hostname")){
+    OUTCON_println("Reset operating time...");
+  }else if(request->hasArg("hostname")){
     hostname=request->arg("hostname");
+    OUTCON_println("New hostname...");
     writeConfig();
   }else if(request->hasArg("password")){
     handleSubmitSSIDConf(request); shiftSSID();
-    writeConfig(); if(WiFiAP && ssid[0].length()) WiFiConnect();
-  }else if(request->hasArg("autoclose")) //autoclose INPUT is always set.
-    handleMainForm(request);
-  sendHTML(request);
+    writeConfig();
+    if(WiFiAP && ssid[0].length()) WiFiConnect();
+  }else if(request->hasArg("configdone")){
+    handleConfig(request);
+    writeConfig();
+  }sendHTML(request);
 }
 #endif
 
@@ -567,7 +574,7 @@ void handleInterrupt(){     // Inputs treatment:
         }break;
       case PHOTOBEAM:
         if(getPin(PHOTOBEAM) && isClosing()){
-          stopMotors(); direction=CLOSE;
+          stopMotors(); lastDirection=CLOSE;
           OUTCON_println("PHOTOBEAM has been detected!");
         }break;
       case OPENTORQUE:
@@ -588,8 +595,8 @@ void handleInterrupt(){     // Inputs treatment:
             stopMotors();
             OUTCON_println("STOP command has been activated.");
           }else{
-            if(getPin(PHOTOBEAM)) direction=OPEN;
-            if(direction==OPEN)
+            if(getPin(PHOTOBEAM)) lastDirection=OPEN;
+            if(lastDirection==OPEN)
                  startOpening();
             else startClosing();
           } OUTCON_println("START command has been activated.");
@@ -720,7 +727,7 @@ void setup(){
   //openedLimit|=getPin(OPENINGLIMIT); closedLimit= (getPin(CLOSINGLIMIT) && !openedLimit);
 
   if(getPin(COMMAND)){
-    if(direction==OPEN)
+    if(lastDirection==OPEN)
          startOpening();
     else startClosing();   //It's a wake up: awake from deepSleep with the AWAKE pin (command pin)...
 } }
@@ -737,8 +744,8 @@ void loop(){
 
   //Is it deepsleep time?
   if(isClosed() && !disableDeepSleep && isNow(deepSleepDelay)){ //deepSleep management:
-    OUTCON_println("(DEEPSLEEP)");
-    writeConfig();
+    OUTCON_println("(Entry into DEEPSLEEP...)");
+    writeConfig(); WiFiDisconnect();
     esp_deep_sleep_start();
   }
 
